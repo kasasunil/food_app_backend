@@ -98,17 +98,32 @@ app.get("/api/allRecipes", async (req, res) => {
 
 app.post("/api/addToCart", async (req, res) => {
   try {
-    const { recipe, email } = req.body;
-    const post = await UserModel.findOneAndUpdate(
+    const { recipe, email, quantity } = req.body;
+    const post = await UserModel.findOne(
       { email: email },
-      { $push: { cartItems: recipe } },
+    );
+    console.log(recipe,quantity);
+    var cartitems = post.cartItems;
+    for(let cart of cartitems){
+        if(cart[0]===recipe){
+            cart[1]=quantity;
+            await UserModel.findOneAndUpdate(
+              { email: email },
+              { $set: { cartItems: cartitems } },
+              { new: true, upsert: true, runValidators: true, findAndModify: false }
+            )
+            return res.status(200).json({ message: "Updated to cart successfully" });
+        }
+    }
+    const user = await UserModel.findOneAndUpdate(
+      { email: email },
+      { $push: { cartItems: [recipe, quantity] } },
       { new: true, upsert: true, runValidators: true, findAndModify: false }
     );
-    console.log(post);
     return res.status(200).json({ message: "Added to cart successfully" });
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ message: "Error adding to cart" });
+    return res.status(500).json({ message: err.message });
   }
 });
 
@@ -135,15 +150,49 @@ app.get("/api/getCartItems/:email", async (req, res) => {
     const cartItems = user.cartItems;
     const arr = [];
     for (let i = 0; i < cartItems.length; i++) {
-      const recipe = await RecipeModel.findOne({ name: cartItems[i] });
-      arr.push(recipe);
+      var recipe = await RecipeModel.findOne({ name: cartItems[i][0] });
+      var x = {};
+      x["name"]=recipe.name;
+      x["imageUrl"]=recipe.imageUrl;
+      x["price"]=recipe.price;
+      x["description"]=recipe.description;
+      x["rating"] = recipe.rating;
+      x["mainIngredient"] = recipe.mainIngredient;
+      x["calories"] = recipe.calories;
+      x["quantity"]=cartItems[i][1];
+      arr.push(x);
     }
     return res.status(200).json(arr);
   } catch (err) {
     console.log(err);
-    return res.status(500).json({ message: "Error adding to favorites" });
+    return res.status(500).json({ message: err.message });
   }
 });
+
+app.get("/api/getFavoriteItems/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+    const user = await UserModel.findOne({ email: email });
+    const favoriteItems = user.favoriteItems;
+    const arr = [];
+    for (let i = 0; i < favoriteItems.length; i++) {
+      var recipe = await RecipeModel.findOne({ name: favoriteItems[i] });
+      var x = {};
+      x["name"]=recipe.name;
+      x["imageUrl"]=recipe.imageUrl;
+      x["price"]=recipe.price;
+      x["description"]=recipe.description;
+      x["rating"] = recipe.rating;
+      x["mainIngredient"] = recipe.mainIngredient;
+      x["calories"] = recipe.calories;
+      arr.push(x);
+    }
+    return res.status(200).json(arr);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: err.message });
+  }
+})
 
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);

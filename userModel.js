@@ -3,8 +3,8 @@ const Schema = new mongoose.Schema(
     {
         name: String,
         email: String,
-        cartItems:[String],
-        favoriteItems:[String],
+        cartItems:["Mixed"],
+        favoriteItems:["Mixed"],
     },
     { timestamps: true }
 );
